@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String   @id @default(uuid())
+  email          String?  @unique
+  passwordHash   String?
+  googleId       String?  @unique
+  name           String?
+  avatarUrl      String?
+  role           String   @default("user")
+  status         String   @default("pending_verification")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // NEW: DB-backed refresh sessions (rotation + reuse detection)
+  sessions       Session[]
+
+  // Keep the rest as-is
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+  loginLogs               LoginLog[]
+}
+
+/**
+ * NEW: Session table replaces RefreshToken for hybrid mode.
+ * - tokenHash is the only lookup (opaque refresh token, hashed at rest)
+ * - rootId groups a rotation “family”; replacedById points to the next link
+ * - lastUsedAt helps with telemetry/risk
+ */
+model Session {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash    String   @unique
+  revoked      Boolean  @default(false)
+
+  rootId       String
+  replacedById String?  @unique
+
+  createdAt    DateTime @default(now())
+  lastUsedAt   DateTime @default(now())
+  expiresAt    DateTime
+
+  ip           String?
+  userAgent    String?
+  device       String?
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([rootId])
+}
+
+/**
+ * KEPT TEMPORARILY: old model so current code keeps running until we flip.
+ * We’ll delete this in the final migration after backfilling rows into Session.
+ */
+model RefreshToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  expiresAt DateTime
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model LoginLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  success   Boolean
+  provider  String
+  ip        String?
+  userAgent String?
+  timestamp DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([timestamp])
+}
