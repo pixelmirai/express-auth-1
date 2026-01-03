@@ -27,6 +27,15 @@ const getUserById = async (id) => {
   return sanitizeUser(user);
 };
 
+
+const getUserByEmail = async (email) => {
+  const user =  await prisma.user.findUnique({where: {email} });
+  if (!user){
+    throw createNotFoundError('Email does not exist');
+  }
+  return sanitizeUser(user)
+}
+
 const banUser = async (id) => {
   try {
     const user = await prisma.user.update({
@@ -69,6 +78,7 @@ const deleteUser = async (id) => {
 module.exports = {
   listUsers,
   getUserById,
+  getUserByEmail,
   banUser,
   unbanUser,
   deleteUser,

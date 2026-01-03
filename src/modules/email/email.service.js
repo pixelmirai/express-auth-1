@@ -28,7 +28,7 @@ const sendMail = async (options) => {
 const sendVerificationEmail = async (user, token) => {
 
   const apiUrl = `${config.app.url}/auth/verify-email?token=${token}`;
-  const verificationUrl = `${frontendURL}/verify-email?token=${token}`;
+  const verificationUrl = `${frontendURL}/auth/verify-email?token=${token}`;
   return sendMail({
     to: user.email,
     from: {

@@ -10,6 +10,7 @@ const listUsers = async (req, res, next) => {
 };
 
 const getUserById = async (req, res, next) => {
+
   try {
     const user = await adminService.getUserById(req.params.id);
     res.json({ status: 'success', data: { user } });
@@ -17,6 +18,17 @@ const getUserById = async (req, res, next) => {
     next(error);
   }
 };
+
+const getUserByEmail =  async(req, res, next) => {
+     
+  try {
+    
+    const user = await adminService.getUserByEmail(req.params.email);
+    res.json({status: 'success', data: {user}});
+  } catch (error) {
+    next(error);
+  }
+}
 
 const banUser = async (req, res, next) => {
   try {
@@ -48,6 +60,7 @@ const deleteUser = async (req, res, next) => {
 module.exports = {
   listUsers,
   getUserById,
+  getUserByEmail,
   banUser,
   unbanUser,
   deleteUser,

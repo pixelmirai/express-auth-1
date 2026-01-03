@@ -1,5 +1,5 @@
 // middleware/roleMiddleware.js
-const { createForbiddenError } = require('../utils/errors');
+const { createForbiddenError, ERROR_CODES } = require('../utils/errors');
 
 /**
  * Role/permission guard.
@@ -19,7 +19,7 @@ const roleMiddleware = (roles = [], predicate) => {
     try {
       // authMiddleware should set req.user; if it didn't, this is a hard stop
       if (!req.user) {
-        return next(createForbiddenError('Insufficient permissions'));
+        return next(createForbiddenError('Insufficient permissions', ERROR_CODES.INSUFFICIENT_PERMISSIONS));
       }
 
       // role match
@@ -28,14 +28,14 @@ const roleMiddleware = (roles = [], predicate) => {
           allowed.includes(req.user.role);
 
       if (!roleOk) {
-        return next(createForbiddenError('Insufficient permissions'));
+        return next(createForbiddenError('Insufficient permissions', ERROR_CODES.INSUFFICIENT_PERMISSIONS));
       }
 
       // optional predicate for fine-grained checks (ownership, org, etc.)
       if (typeof predicate === 'function') {
         const extraOk = await Promise.resolve(predicate(req));
         if (!extraOk) {
-          return next(createForbiddenError('Insufficient permissions'));
+          return next(createForbiddenError('Insufficient permissions', ERROR_CODES.INSUFFICIENT_PERMISSIONS));
         }
       }
 

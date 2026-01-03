@@ -37,10 +37,12 @@ User accounts transition through the following statuses:
 
 All errors share the following structure:
 
-```json
+`json
 {
   "status": "error",
   "message": "Human-readable description",
+  "statusCode": 403,
+  "code": "USER_BANNED",
   "details": [
     {
       "path": "body.email",
@@ -48,10 +50,9 @@ All errors share the following structure:
     }
   ]
 }
-```
+`
 
-`details` is present for validation failures only.【F:src/middleware/errorHandler.js†L5-L21】【F:src/middleware/validate.js†L4-L19】 Common error codes include `400 Validation failed`, `401 Unauthorized`, `403 Forbidden`, `404 Not Found`, and `409 Conflict` depending on the scenario.【F:src/utils/errors.js†L11-L18】
-
+statusCode mirrors the HTTP status. code is a machine-friendly enum string (see docs/error-codes.md). details is present for validation failures only.
 ## Health
 
 ### `GET /health`

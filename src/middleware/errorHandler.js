@@ -1,4 +1,4 @@
-const { AppError } = require('../utils/errors');
+const { AppError, ERROR_CODES } = require('../utils/errors');
 const logger = require('../utils/logger');
 
 const errorHandler = (err, req, res, next) => {
@@ -22,6 +22,8 @@ const errorHandler = (err, req, res, next) => {
   const response = {
     status: 'error',
     message: err.message || 'Internal server error',
+    statusCode,
+    code: err.code || ERROR_CODES.INTERNAL_ERROR,
   };
 
   if (isAppError && err.details && Object.keys(err.details).length > 0) {

@@ -14,6 +14,7 @@ const emailService = require('../email/email.service');
 const { verifyGoogleIdToken } = require('./oauth/google');
 const {
   AppError,
+  ERROR_CODES,
   createUnauthorizedError,
   createForbiddenError,
   createConflictError,
@@ -50,9 +51,9 @@ const register = async ({ email, password, name }) => {
   const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
   if (existingUser) {
     if (existingUser.passwordHash) {
-      throw createConflictError('An account with this email already exists');
+      throw createConflictError('An account with this email already exists', ERROR_CODES.EMAIL_IN_USE_PASSWORD);
     }
-    throw createConflictError('Email already associated with a social login account');
+    throw createConflictError('Email already associated with a social login account', ERROR_CODES.EMAIL_IN_USE_SOCIAL);
   }
 
   const passwordHash = await hashPassword(password);
@@ -92,27 +93,27 @@ const login = async ({ email, password, ip, userAgent }) => {
   if (!user || !user.passwordHash) {
     
     await createLoginLog({ userId: user?.id, success: false, provider: 'password', ip, userAgent });
-    throw createUnauthorizedError('Invalid credentials');
+    throw createUnauthorizedError('Invalid credentials', ERROR_CODES.INVALID_CREDENTIALS);
 
   }
 
   if (user.status === 'banned') {
         console.log("user is banned")
     await createLoginLog({ userId: user.id, success: false, provider: 'password', ip, userAgent });
-    throw createForbiddenError('User account is banned');
+    throw createForbiddenError('User account is banned', ERROR_CODES.USER_BANNED);
 
   }
 
-  // if (user.status === 'pending_verification' ) {
-  //       console.log("email not verified")
-  //   await createLoginLog({ userId: user.id, success: false, provider: 'password', ip, userAgent });
-  //   throw createForbiddenError('Email verification required');
-  // }
+  if (user.status === 'pending_verification' ) {
+      
+    await createLoginLog({ userId: user.id, success: false, provider: 'password', ip, userAgent });
+    throw createForbiddenError('Email verification required', ERROR_CODES.EMAIL_NOT_VERIFIED);
+  }
 
   const passwordValid = await comparePassword(password, user.passwordHash);
   if (!passwordValid) {
     await createLoginLog({ userId: user.id, success: false, provider: 'password', ip, userAgent });
-    throw createUnauthorizedError('Invalid credentials');
+    throw createUnauthorizedError('Invalid credentials', ERROR_CODES.INVALID_CREDENTIALS);
   }
 
   const { token: refreshToken, session } = await createSession(user.id, { ip, userAgent });
@@ -128,10 +129,10 @@ const loginWithGoogleOld = async ({ idToken, ip, userAgent }) => {
   const profile = await verifyGoogleIdToken(idToken);
 
   if (!profile.email) {
-    throw new AppError('Google account does not have an email address', 400);
+    throw new AppError('Google account does not have an email address', 400, {}, ERROR_CODES.GOOGLE_EMAIL_MISSING);
   }
   if (!profile.emailVerified) {
-    throw new AppError('Google email is not verified', 400);
+    throw new AppError('Google email is not verified', 400, {}, ERROR_CODES.GOOGLE_EMAIL_NOT_VERIFIED);
   }
 
   const normalizedEmail = profile.email.toLowerCase();
@@ -144,7 +145,7 @@ const loginWithGoogleOld = async ({ idToken, ip, userAgent }) => {
   if (user) {
     if (user.status === 'banned') {
       await createLoginLog({ userId: user.id, success: false, provider: 'google', ip, userAgent });
-      throw createForbiddenError('User account is banned');
+      throw createForbiddenError('User account is banned', ERROR_CODES.USER_BANNED);
     }
 
 
@@ -193,10 +194,10 @@ const loginWithGoogle = async ({ idToken, ip, userAgent }) => {
   const profile = await verifyGoogleIdToken(idToken);
 
   if (!profile.email) {
-    throw new AppError("Google account does not have an email address", 400);
+    throw new AppError("Google account does not have an email address", 400, {}, ERROR_CODES.GOOGLE_EMAIL_MISSING);
   }
   if (!profile.emailVerified) {
-    throw new AppError("Google email is not verified", 400);
+    throw new AppError("Google email is not verified", 400, {}, ERROR_CODES.GOOGLE_EMAIL_NOT_VERIFIED);
   }
 
   const normalizedEmail = profile.email.toLowerCase();
@@ -210,14 +211,14 @@ const loginWithGoogle = async ({ idToken, ip, userAgent }) => {
   if (user && !user.googleId) {
     throw createConflictError(
       "An account with this email already exists. Please sign in with email/password."
-    );
+      , ERROR_CODES.EMAIL_IN_USE_PASSWORD);
   }
 
   // 3) If email exists AND is google-linked, enforce that the googleId matches this token
   if (user && user.googleId && user.googleId !== profile.googleId) {
     throw createConflictError(
       "This email is linked to a different Google account."
-    );
+      , ERROR_CODES.GOOGLE_ACCOUNT_MISMATCH);
   }
 
   // 4) If no user exists, create a new google user
@@ -242,7 +243,7 @@ const loginWithGoogle = async ({ idToken, ip, userAgent }) => {
       ip,
       userAgent,
     });
-    throw createForbiddenError("User account is banned");
+    throw createForbiddenError("User account is banned", ERROR_CODES.USER_BANNED);
   }
 
   // 6) Session + tokens
@@ -272,18 +273,18 @@ const loginWithGoogle = async ({ idToken, ip, userAgent }) => {
 // REFRESH TOKENS -> rotation + reuse detection
 const refreshTokens = async ({ refreshToken, ip, userAgent }) => {
   if (!refreshToken) {
-    throw createUnauthorizedError('Missing refresh token');
+    throw createUnauthorizedError('Missing refresh token', ERROR_CODES.REFRESH_TOKEN_MISSING);
   }
 
   try {
     const { token: newRefresh, session } = await verifyAndRotateSession(refreshToken, { ip, userAgent });
     const user = await prisma.user.findUnique({ where: { id: session.userId } });
-    if (!user) throw createUnauthorizedError('Invalid refresh token');
+    if (!user) throw createUnauthorizedError('Invalid refresh token', ERROR_CODES.INVALID_REFRESH_TOKEN);
 
     if (user.status === 'banned') {
       // revoke newly created session just in case
       await revokeSessionById(session.id).catch(() => {});
-      throw createForbiddenError('User account is banned');
+      throw createForbiddenError('User account is banned', ERROR_CODES.USER_BANNED);
     }
 
     const accessToken = signAccess(user, session.id);
@@ -292,10 +293,10 @@ const refreshTokens = async ({ refreshToken, ip, userAgent }) => {
     const msg = e && e.message;
     if (msg === 'reuse_detected') {
       // Entire family is revoked in utils already; caller should force re-login
-      throw createUnauthorizedError('Refresh token reuse detected');
+      throw createUnauthorizedError('Refresh token reuse detected', ERROR_CODES.REFRESH_TOKEN_REUSE);
     }
-    if (msg === 'expired') throw createUnauthorizedError('Refresh token expired');
-    if (msg === 'revoked' || msg === 'invalid_refresh') throw createUnauthorizedError('Invalid refresh token');
+    if (msg === 'expired') throw createUnauthorizedError('Refresh token expired', ERROR_CODES.REFRESH_TOKEN_EXPIRED);
+    if (msg === 'revoked' || msg === 'invalid_refresh') throw createUnauthorizedError('Invalid refresh token', ERROR_CODES.INVALID_REFRESH_TOKEN);
     throw e;
   }
 };
@@ -315,17 +316,17 @@ const verifyEmail = async ({ token }) => {
   const tokenHash = hashToken(token);
   const record = await prisma.emailVerificationToken.findUnique({ where: { tokenHash } });
   if (!record) {
-    throw createUnauthorizedError('Invalid verification token');
+    throw createUnauthorizedError('Invalid verification token', ERROR_CODES.INVALID_VERIFICATION_TOKEN);
   }
 
   if (record.expiresAt < new Date()) {
     await prisma.emailVerificationToken.delete({ where: { id: record.id } });
-    throw createUnauthorizedError('Verification token expired');
+    throw createUnauthorizedError('Verification token expired', ERROR_CODES.VERIFICATION_TOKEN_EXPIRED);
   }
 
   const user = await prisma.user.findUnique({ where: { id: record.userId } });
   if (!user) {
-    throw createUnauthorizedError('Invalid verification token');
+    throw createUnauthorizedError('Invalid verification token', ERROR_CODES.INVALID_VERIFICATION_TOKEN);
   }
 
   let updatedUser = user;
@@ -402,16 +403,16 @@ const resetPassword = async ({ token, password }) => {
   const tokenHash = hashToken(token);
   const record = await prisma.passwordResetToken.findUnique({ where: { tokenHash } });
   if (!record) {
-    throw createUnauthorizedError('Invalid reset token');
+    throw createUnauthorizedError('Invalid reset token', ERROR_CODES.INVALID_RESET_TOKEN);
   }
 
   if (record.used) {
-    throw createUnauthorizedError('Reset token has already been used');
+    throw createUnauthorizedError('Reset token has already been used', ERROR_CODES.RESET_TOKEN_USED);
   }
 
   if (record.expiresAt < new Date()) {
     await prisma.passwordResetToken.delete({ where: { id: record.id } });
-    throw createUnauthorizedError('Reset token expired');
+    throw createUnauthorizedError('Reset token expired', ERROR_CODES.RESET_TOKEN_EXPIRED);
   }
 
   const passwordHash = await hashPassword(password);
