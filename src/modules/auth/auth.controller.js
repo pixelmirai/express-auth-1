@@ -187,8 +187,22 @@ const resendVerificationEmail = async (req, res, next) => {
 };
 
 const resetPassword = async (req, res, next) => {
+  console.log("aewfawefoinwweafoinawneiofniowefnoawfie")
   try {
     const { token, password } = req.validated.body;
+
+    console.log("====================================")
+    console.log("====================================")
+    console.log("Reseting password")
+    console.log("token", token)
+    console.log("password", password)
+
+
+
+
+    console.log("====================================")
+    console.log("====================================")
+
     await authService.resetPassword({ token, password });
     res.json({ status: 'success', message: 'Password updated successfully' });
   } catch (error) {

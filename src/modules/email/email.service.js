@@ -47,7 +47,8 @@ const sendVerificationEmail = async (user, token) => {
 };
 
 const sendPasswordResetEmail = async (user, token) => {
-  const resetUrl = `${config.app.url}/auth/reset-password?token=${token}`;
+  const apiUrl = `${config.app.url}/auth/reset-password?token=${token}`;
+  const resetUrl = `${frontendURL}/auth/reset-password?token=${token}`;
   return sendMail({
     to: user.email,
     from: {
