@@ -1,6 +1,7 @@
 const nodemailer = require('nodemailer');
 const config = require('../../config/env');
 const logger = require('../../utils/logger');
+const { Resend } = require("resend");
 
 const frontendURL = `http://localhost:3000`
 
