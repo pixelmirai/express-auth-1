@@ -33,7 +33,7 @@ app.use(
 const allowedOrigins = [
     config.app.url,                 // your deployed frontend (prod)
     'http://localhost:3000', 
-        'http://localhost:3001',        // CRA/Next dev
+      'http://localhost:3001',        // CRA/Next dev
     'http://127.0.0.1:3000',
     'http://localhost:5173',        // Vite
     'http://127.0.0.1:5173',

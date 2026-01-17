@@ -38,7 +38,7 @@ const sendMail = async (options) => {
 };
 
 const sendVerificationEmail = async (user, token) => {
-  const verificationUrl = `${frontendURL}/auth/verify-email?token=${token}`;
+  const verificationUrl = `${config.app.url}/auth/verify-email?token=${token}`;
 
 
 
@@ -60,7 +60,8 @@ const sendVerificationEmail = async (user, token) => {
 };
 
 const sendPasswordResetEmail = async (user, token) => {
-  const resetUrl = `${frontendURL}/auth/reset-password?token=${token}`;
+
+  const resetUrl = `${config.app.url}/auth/reset-password?token=${token}`;
   return sendMail({
     to: user.email,
     from: {
