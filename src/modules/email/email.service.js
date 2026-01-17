@@ -1,25 +1,36 @@
-const nodemailer = require('nodemailer');
 const config = require('../../config/env');
 const logger = require('../../utils/logger');
-const { Resend } = require("resend");
+const { Resend } = require('resend');
 
-const frontendURL = `http://localhost:3000`
+const frontendURL = 'http://localhost:3000';
 
-const transporter = nodemailer.createTransport({
-  host: config.email.smtpHost,
-  port: config.email.smtpPort,
-  secure: config.email.smtpPort === 465,
-  auth: {
-    user: config.email.smtpUser,
-    pass: config.email.smtpPass,
-  },
-});
+const resend = new Resend(config.email.resendApiKey);
+
+const formatFrom = (from) => {
+  if (!from) return from;
+  if (typeof from === 'string') return from;
+  const name = (from.name || '').trim();
+  const address = from.address || '';
+  return name ? `${name} <${address}>` : address;
+};
 
 const sendMail = async (options) => {
   try {
-    const info = await transporter.sendMail(options);
-    logger.info({ messageId: info.messageId }, 'Email sent');
-    return info;
+    const payload = {
+      to: options.to,
+      from: formatFrom(options.from),
+      subject: options.subject,
+      html: options.html,
+      text: options.text,
+    };
+
+    const { data, error } = await resend.emails.send(payload);
+    if (error) {
+      throw error;
+    }
+
+    logger.info({ messageId: data && data.id }, 'Email sent');
+    return data;
   } catch (error) {
     logger.error({ err: error }, 'Failed to send email');
     throw error;
@@ -27,9 +38,10 @@ const sendMail = async (options) => {
 };
 
 const sendVerificationEmail = async (user, token) => {
-
-  const apiUrl = `${config.app.url}/auth/verify-email?token=${token}`;
   const verificationUrl = `${frontendURL}/auth/verify-email?token=${token}`;
+
+
+
   return sendMail({
     to: user.email,
     from: {
@@ -48,7 +60,6 @@ const sendVerificationEmail = async (user, token) => {
 };
 
 const sendPasswordResetEmail = async (user, token) => {
-  const apiUrl = `${config.app.url}/auth/reset-password?token=${token}`;
   const resetUrl = `${frontendURL}/auth/reset-password?token=${token}`;
   return sendMail({
     to: user.email,

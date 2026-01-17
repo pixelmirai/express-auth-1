@@ -24,6 +24,7 @@ const rawEnv = {
   EMAIL_SMTP_PORT: process.env.EMAIL_SMTP_PORT,
   EMAIL_SMTP_USER: process.env.EMAIL_SMTP_USER,
   EMAIL_SMTP_PASS: process.env.EMAIL_SMTP_PASS,
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
 };
 
 // Validation (keeps your original semantics)
@@ -53,6 +54,7 @@ const envSchema = z.object({
   }),
   EMAIL_SMTP_USER: z.string().min(1),
   EMAIL_SMTP_PASS: z.string().min(1),
+  RESEND_API_KEY: z.string().min(1),
 });
 
 const parsed = envSchema.safeParse(rawEnv);
@@ -105,7 +107,9 @@ const config = {
     smtpPort: env.EMAIL_SMTP_PORT,
     smtpUser: env.EMAIL_SMTP_USER,
     smtpPass: env.EMAIL_SMTP_PASS,
+    resendApiKey: env.RESEND_API_KEY,
   },
 };
 
 module.exports = config;
+
