@@ -97,6 +97,13 @@ const config = {
       httpOnly: true,
       path: '/auth/refresh',
     },
+    accessCookie: {
+      name: 'atid',
+      secure: env.NODE_ENV === 'production',
+      sameSite: 'Lax',
+      httpOnly: true,
+      path: '/',
+    },
   },
   google: {
     clientId: env.GOOGLE_CLIENT_ID,

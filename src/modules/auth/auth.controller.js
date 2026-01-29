@@ -33,6 +33,27 @@ function clearRefreshCookie(res) {
   });
 }
 
+function setAccessCookie(res, token) {
+  const c = config.tokens.accessCookie;
+  res.cookie(c.name, token, {
+    httpOnly: true,
+    secure: c.secure,
+    sameSite: c.sameSite,
+    path: c.path,
+    maxAge: ms(config.jwt.accessTokenTtl),
+  });
+}
+
+function clearAccessCookie(res) {
+  const c = config.tokens.accessCookie;
+  res.clearCookie(c.name, {
+    httpOnly: true,
+    secure: c.secure,
+    sameSite: c.sameSite,
+    path: c.path,
+  });
+}
+
 const register = async (req, res, next) => {
   try {
     const { email, password, name } = req.validated.body;
@@ -43,6 +64,7 @@ const register = async (req, res, next) => {
   }
 };
 
+
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.validated.body;
@@ -52,6 +74,7 @@ const login = async (req, res, next) => {
 
     // result should be { user, accessToken, refreshToken }
     if (result.refreshToken) setRefreshCookie(res, result.refreshToken);
+    if (result.accessToken) setAccessCookie(res, result.accessToken);
 
     res.json({
       status: 'success',
@@ -75,6 +98,7 @@ const loginWithGoogle = async (req, res, next) => {
     const result = await authService.loginWithGoogle({ idToken, ip, userAgent });
 
     if (result.refreshToken) setRefreshCookie(res, result.refreshToken);
+    if (result.accessToken) setAccessCookie(res, result.accessToken);
 
     res.json({
       status: 'success',
@@ -103,6 +127,7 @@ const refresh = async (req, res, next) => {
     const result = await authService.refreshTokens({ refreshToken: provided, ip, userAgent });
 
     if (result.refreshToken) setRefreshCookie(res, result.refreshToken);
+    if (result.accessToken) setAccessCookie(res, result.accessToken);
 
     res.json({
       status: 'success',
@@ -117,14 +142,17 @@ const refresh = async (req, res, next) => {
     const msg = (error && error.message) || '';
     if (msg === 'reuse_detected') {
       clearRefreshCookie(res);
+      clearAccessCookie(res);
       return res.status(401).json({ status: 'error', message: 'Refresh token reuse detected. Please log in again.' });
     }
     if (msg === 'expired') {
       clearRefreshCookie(res);
+      clearAccessCookie(res);
       return res.status(401).json({ status: 'error', message: 'Refresh token expired. Please log in again.' });
     }
     if (msg === 'invalid_refresh' || msg === 'revoked') {
       clearRefreshCookie(res);
+      clearAccessCookie(res);
       return res.status(401).json({ status: 'error', message: 'Invalid refresh token.' });
     }
     next(error);
@@ -137,6 +165,7 @@ const logout = async (req, res, next) => {
     const token = getRefreshTokenFromRequest(req) || req.validated.body.refreshToken;
     await authService.logout({ refreshToken: token });
     clearRefreshCookie(res);
+    clearAccessCookie(res);
     res.json({ status: 'success', message: 'Logged out successfully' });
   } catch (error) {
     next(error);
