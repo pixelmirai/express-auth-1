@@ -11,7 +11,7 @@ const {
 } = require('../../utils/tokens');
 const { generateToken, hashToken } = require('../../utils/crypto');
 const emailService = require('../email/email.service');
-const { verifyGoogleIdToken } = require('./oauth/google');
+const { verifyGoogleIdToken, verifyGoogleAuthCode } = require('./oauth/google');
 const {
   AppError,
   ERROR_CODES,
@@ -189,9 +189,7 @@ const loginWithGoogleOld = async ({ idToken, ip, userAgent }) => {
 // updated
 
 
-//updated login with google, do not allow to merge accounts
-const loginWithGoogle = async ({ idToken, ip, userAgent }) => {
-  const profile = await verifyGoogleIdToken(idToken);
+const loginWithGoogleProfile = async ({ profile, ip, userAgent }) => {
 
   if (!profile.email) {
     throw new AppError("Google account does not have an email address", 400, {}, ERROR_CODES.GOOGLE_EMAIL_MISSING);
@@ -263,6 +261,17 @@ const loginWithGoogle = async ({ idToken, ip, userAgent }) => {
   });
 
   return { user: sanitizeUser(user), accessToken, refreshToken };
+};
+
+//updated login with google, do not allow to merge accounts
+const loginWithGoogle = async ({ idToken, ip, userAgent }) => {
+  const profile = await verifyGoogleIdToken(idToken);
+  return loginWithGoogleProfile({ profile, ip, userAgent });
+};
+
+const loginWithGoogleCode = async ({ code, redirectUri, codeVerifier, ip, userAgent }) => {
+  const profile = await verifyGoogleAuthCode({ code, redirectUri, codeVerifier });
+  return loginWithGoogleProfile({ profile, ip, userAgent });
 };
 
 //
@@ -439,6 +448,7 @@ module.exports = {
   register,
   login,
   loginWithGoogle,
+  loginWithGoogleCode,
   refreshTokens,
   logout,
   verifyEmail,

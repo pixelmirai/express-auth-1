@@ -91,11 +91,42 @@ const login = async (req, res, next) => {
 };
 
 const loginWithGoogle = async (req, res, next) => {
+  console.log("login/google")
   try {
     const { idToken } = req.validated.body;
     const ip = req.ip;
     const userAgent = req.get('user-agent') || '';
     const result = await authService.loginWithGoogle({ idToken, ip, userAgent });
+
+    if (result.refreshToken) setRefreshCookie(res, result.refreshToken);
+    if (result.accessToken) setAccessCookie(res, result.accessToken);
+
+    res.json({
+      status: 'success',
+      data: {
+        user: result.user,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const loginWithGoogleCode = async (req, res, next) => {
+  console.log("login/google/code")
+  try {
+    const { code, redirectUri, codeVerifier } = req.validated.body;
+    const ip = req.ip;
+    const userAgent = req.get('user-agent') || '';
+    const result = await authService.loginWithGoogleCode({
+      code,
+      redirectUri,
+      codeVerifier,
+      ip,
+      userAgent,
+    });
 
     if (result.refreshToken) setRefreshCookie(res, result.refreshToken);
     if (result.accessToken) setAccessCookie(res, result.accessToken);
@@ -243,6 +274,7 @@ module.exports = {
   register,
   login,
   loginWithGoogle,
+  loginWithGoogleCode,
   refresh,
   logout,
   logoutAll,

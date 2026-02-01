@@ -28,6 +28,14 @@ const googleLoginSchema = z.object({
   }),
 });
 
+const googleLoginCodeSchema = z.object({
+  body: z.object({
+    code: z.string().min(5),
+    redirectUri: z.string().url().optional(),
+    codeVerifier: z.string().min(10).optional(),
+  }),
+});
+
 // Optional so browsers can use HttpOnly cookie and mobile can use header/body
 const refreshSchema = z.object({
   body: z.object({
@@ -74,6 +82,7 @@ module.exports = {
   registerSchema,
   loginSchema,
   googleLoginSchema,
+  googleLoginCodeSchema,
   refreshSchema,
   logoutSchema,
   logoutAllSchema,

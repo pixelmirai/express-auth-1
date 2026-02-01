@@ -7,6 +7,7 @@ const {
   registerSchema,
   loginSchema,
   googleLoginSchema,
+  googleLoginCodeSchema,
   refreshSchema,
   logoutSchema,
   logoutAllSchema,
@@ -32,6 +33,7 @@ const resendVerificationLimiter = rateLimit({
 router.post('/register', validate(registerSchema), controller.register);
 router.post('/login', validate(loginSchema), controller.login);
 router.post('/login/google', validate(googleLoginSchema), controller.loginWithGoogle);
+router.post('/login/google/code', validate(googleLoginCodeSchema), controller.loginWithGoogleCode);
 router.post('/refresh', validate(refreshSchema), controller.refresh);
 router.post('/logout', validate(logoutSchema), controller.logout);
 router.post('/logout-all', authMiddleware, validate(logoutAllSchema), controller.logoutAll);
