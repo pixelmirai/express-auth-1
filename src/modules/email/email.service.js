@@ -38,7 +38,7 @@ const sendMail = async (options) => {
 };
 
 const sendVerificationEmail = async (user, token) => {
-  const verificationUrl = `${config.app.url}/auth/verify-email?token=${token}`;
+  const verificationUrl = `${config.app.url}/auth/verify-email/verify?token=${token}`;
 
 
 
